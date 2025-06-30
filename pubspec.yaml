@@ -1,5 +1,5 @@
 name: cuckoo_booru
-description: A sample command-line application.
+description: A Dart-based console application for managing fanart collections from Danbooru and similar booru-style imageboards.
 version: 1.0.0
 # repository: https://github.com/my_org/my_repo
 
@@ -8,7 +8,9 @@ environment:
 
 # Add regular dependencies here.
 dependencies:
-  # path: ^1.8.0
+  http: ^1.1.0
+  args: ^2.4.2
+  path: ^1.8.3
 
 dev_dependencies:
   lints: ^5.0.0
