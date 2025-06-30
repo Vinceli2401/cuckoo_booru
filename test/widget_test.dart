@@ -1,4 +1,4 @@
-// This is a basic Flutter widget test.
+// This is a basic Flutter widget test for CuckooBooru app.
 //
 // To perform an interaction with a widget in your test, use the WidgetTester
 // utility in the flutter_test package. For example, you can send tap and scroll
@@ -11,20 +11,45 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:cuckoo_booru/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('CuckooBooru app loads correctly', (WidgetTester tester) async {
+    await tester.pumpWidget(const CuckooBooruApp());
+    await tester.pumpAndSettle();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.byType(BottomNavigationBar), findsOneWidget);
+    expect(find.text('Search'), findsWidgets);
+    expect(find.text('Favorites'), findsOneWidget);
+    expect(find.text('About'), findsOneWidget);
+    expect(find.text('CuckooBooru'), findsOneWidget);
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  testWidgets('Navigation between tabs works', (WidgetTester tester) async {
+    await tester.pumpWidget(const CuckooBooruApp());
+    await tester.pumpAndSettle();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.text('CuckooBooru'), findsOneWidget);
+
+    final bottomNavBar = find.byType(BottomNavigationBar);
+    expect(bottomNavBar, findsOneWidget);
+
+    await tester.tap(
+      find.descendant(of: bottomNavBar, matching: find.text('Favorites')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Favorites'), findsWidgets);
+
+    await tester.tap(
+      find.descendant(of: bottomNavBar, matching: find.text('About')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('About CuckooBooru'), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(of: bottomNavBar, matching: find.text('Search')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('CuckooBooru'), findsOneWidget);
   });
 }

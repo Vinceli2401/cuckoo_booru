@@ -69,9 +69,9 @@ class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
       await launchUrl(uri);
     } else {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not launch $url')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not launch $url')));
       }
     }
   }
@@ -101,15 +101,16 @@ class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: CachedNetworkImage(
-                imageUrl: widget.artwork.fileUrl ?? widget.artwork.previewFileUrl ?? '',
+                imageUrl:
+                    widget.artwork.fileUrl ??
+                    widget.artwork.previewFileUrl ??
+                    '',
                 fit: BoxFit.cover,
                 width: double.infinity,
                 placeholder: (context, url) => Container(
                   height: 300,
                   color: Colors.grey[300],
-                  child: const Center(
-                    child: CircularProgressIndicator(),
-                  ),
+                  child: const Center(child: CircularProgressIndicator()),
                 ),
                 errorWidget: (context, url, error) => Container(
                   height: 300,
@@ -120,16 +121,19 @@ class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
                       children: [
                         Icon(Icons.broken_image, size: 64, color: Colors.grey),
                         SizedBox(height: 8),
-                        Text('Image not available', style: TextStyle(color: Colors.grey)),
+                        Text(
+                          'Image not available',
+                          style: TextStyle(color: Colors.grey),
+                        ),
                       ],
                     ),
                   ),
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Basic Info Card
             Card(
               child: Padding(
@@ -144,20 +148,25 @@ class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    
+
                     _buildInfoRow('Post ID', '#${widget.artwork.id}'),
                     _buildInfoRow('Score', '${widget.artwork.score}'),
-                    _buildInfoRow('Rating', _getRatingText(), 
-                        color: _getRatingColor()),
-                    _buildInfoRow('Created', 
-                        '${widget.artwork.createdAt.day}/${widget.artwork.createdAt.month}/${widget.artwork.createdAt.year}'),
+                    _buildInfoRow(
+                      'Rating',
+                      _getRatingText(),
+                      color: _getRatingColor(),
+                    ),
+                    _buildInfoRow(
+                      'Created',
+                      '${widget.artwork.createdAt.day}/${widget.artwork.createdAt.month}/${widget.artwork.createdAt.year}',
+                    ),
                   ],
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Tags Card
             Card(
               child: Padding(
@@ -172,25 +181,41 @@ class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    
+
                     if (widget.artwork.tagStringArtist?.isNotEmpty == true)
-                      _buildTagSection('Artist', widget.artwork.tagStringArtist!, Colors.red),
-                    
+                      _buildTagSection(
+                        'Artist',
+                        widget.artwork.tagStringArtist!,
+                        Colors.red,
+                      ),
+
                     if (widget.artwork.tagStringCharacter?.isNotEmpty == true)
-                      _buildTagSection('Character', widget.artwork.tagStringCharacter!, Colors.green),
-                    
+                      _buildTagSection(
+                        'Character',
+                        widget.artwork.tagStringCharacter!,
+                        Colors.green,
+                      ),
+
                     if (widget.artwork.tagStringCopyright?.isNotEmpty == true)
-                      _buildTagSection('Copyright', widget.artwork.tagStringCopyright!, Colors.purple),
-                    
+                      _buildTagSection(
+                        'Copyright',
+                        widget.artwork.tagStringCopyright!,
+                        Colors.purple,
+                      ),
+
                     if (widget.artwork.tagString.isNotEmpty)
-                      _buildTagSection('General', widget.artwork.tagString, Colors.blue),
+                      _buildTagSection(
+                        'General',
+                        widget.artwork.tagString,
+                        Colors.blue,
+                      ),
                   ],
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Source Card
             if (widget.artwork.source?.isNotEmpty == true)
               Card(
@@ -201,12 +226,11 @@ class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
                     children: [
                       Text(
                         'Source',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 12),
-                      
+
                       InkWell(
                         onTap: () => _launchUrl(widget.artwork.source!),
                         child: Text(
@@ -237,17 +261,17 @@ class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
             width: 80,
             child: Text(
               '$label:',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: color,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: color),
             ),
           ),
         ],
@@ -257,7 +281,7 @@ class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
 
   Widget _buildTagSection(String category, String tags, Color color) {
     final tagList = tags.split(' ').where((tag) => tag.isNotEmpty).toList();
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Column(
@@ -274,17 +298,18 @@ class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
           Wrap(
             spacing: 4,
             runSpacing: 4,
-            children: tagList.map((tag) => Chip(
-              label: Text(
-                tag,
-                style: const TextStyle(fontSize: 12),
-              ),
-              backgroundColor: color.withOpacity(0.1),
-              side: BorderSide(color: color.withOpacity(0.3)),
-            )).toList(),
+            children: tagList
+                .map(
+                  (tag) => Chip(
+                    label: Text(tag, style: const TextStyle(fontSize: 12)),
+                    backgroundColor: color.withValues(alpha: 0.1),
+                    side: BorderSide(color: color.withValues(alpha: 0.3)),
+                  ),
+                )
+                .toList(),
           ),
         ],
       ),
     );
   }
-} 
+}

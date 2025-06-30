@@ -15,6 +15,22 @@ class _SearchScreenState extends State<SearchScreen> {
   final ScrollController _scrollController = ScrollController();
   String _selectedRating = 'all';
 
+  // Quick prompt suggestions
+  final List<String> _quickPrompts = [
+    'pokemon_masters_ex',
+    'genshin_impact',
+    'fate/grand_order',
+    'azur_lane',
+    'blue_archive',
+    'honkai_impact_3rd',
+    'arknights',
+    'touhou',
+    'kantai_collection',
+    'fire_emblem',
+    'final_fantasy',
+    'league_of_legends',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -29,7 +45,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= 
+    if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       // Load more when near the bottom
       context.read<AppState>().loadMoreResults();
@@ -39,11 +55,13 @@ class _SearchScreenState extends State<SearchScreen> {
   void _performSearch() {
     final tags = _searchController.text.trim();
     if (tags.isNotEmpty) {
-      context.read<AppState>().searchPosts(
-        tags: tags,
-        rating: _selectedRating,
-      );
+      context.read<AppState>().searchPosts(tags: tags, rating: _selectedRating);
     }
+  }
+
+  void _searchPrompt(String prompt) {
+    _searchController.text = prompt;
+    context.read<AppState>().searchPosts(tags: prompt, rating: _selectedRating);
   }
 
   @override
@@ -56,8 +74,18 @@ class _SearchScreenState extends State<SearchScreen> {
       body: Column(
         children: [
           // Search Bar
-          Padding(
+          Container(
             padding: const EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              border: Border(
+                bottom: BorderSide(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.2),
+                ),
+              ),
+            ),
             child: Column(
               children: [
                 Row(
@@ -95,7 +123,10 @@ class _SearchScreenState extends State<SearchScreen> {
                       items: const [
                         DropdownMenuItem(value: 'all', child: Text('All')),
                         DropdownMenuItem(value: 's', child: Text('Safe')),
-                        DropdownMenuItem(value: 'q', child: Text('Questionable')),
+                        DropdownMenuItem(
+                          value: 'q',
+                          child: Text('Questionable'),
+                        ),
                         DropdownMenuItem(value: 'e', child: Text('Explicit')),
                       ],
                     ),
@@ -104,7 +135,60 @@ class _SearchScreenState extends State<SearchScreen> {
               ],
             ),
           ),
-          
+
+          // Quick Prompts
+          Container(
+            height: 60,
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Text(
+                    'Quick Prompts',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Expanded(
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                    itemCount: _quickPrompts.length,
+                    itemBuilder: (context, index) {
+                      final prompt = _quickPrompts[index];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                        child: ActionChip(
+                          label: Text(
+                            prompt,
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                          onPressed: () => _searchPrompt(prompt),
+                          backgroundColor: Theme.of(
+                            context,
+                          ).colorScheme.primaryContainer,
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          labelStyle: TextStyle(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onPrimaryContainer,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           // Results
           Expanded(
             child: Consumer<AppState>(
@@ -158,25 +242,16 @@ class _SearchScreenState extends State<SearchScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.search,
-                          size: 64,
-                          color: Colors.grey,
-                        ),
+                        Icon(Icons.search, size: 64, color: Colors.grey),
                         SizedBox(height: 16),
                         Text(
                           'Enter tags to search for artwork',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.grey,
-                          ),
+                          style: TextStyle(fontSize: 18, color: Colors.grey),
                         ),
                         SizedBox(height: 8),
                         Text(
                           'Try: cat, dog, anime, etc.',
-                          style: TextStyle(
-                            color: Colors.grey,
-                          ),
+                          style: TextStyle(color: Colors.grey),
                         ),
                       ],
                     ),
@@ -196,4 +271,4 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
     );
   }
-} 
+}
