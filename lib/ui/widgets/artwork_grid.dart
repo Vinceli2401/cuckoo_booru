@@ -26,10 +26,10 @@ class ArtworkGrid extends StatelessWidget {
             controller: scrollController,
             padding: const EdgeInsets.all(8),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3, // Fixed 3 columns
+              crossAxisCount: 3,
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
-              childAspectRatio: 0.75, // Height is 1.33x width (4:3 ratio)
+              childAspectRatio: 0.75,
             ),
             itemCount: artworks.length,
             itemBuilder: (context, index) {
@@ -39,7 +39,6 @@ class ArtworkGrid extends StatelessWidget {
           ),
         ),
 
-        // Loading indicator at bottom
         if (isLoading)
           Container(
             padding: const EdgeInsets.all(16.0),
@@ -80,11 +79,13 @@ class ArtworkCard extends StatefulWidget {
 
 class _ArtworkCardState extends State<ArtworkCard> {
   bool _isFavorite = false;
+  bool _hasValidImage = true;
 
   @override
   void initState() {
     super.initState();
     _checkFavoriteStatus();
+    _validateImage();
   }
 
   void _checkFavoriteStatus() async {
@@ -94,6 +95,25 @@ class _ArtworkCardState extends State<ArtworkCard> {
         _isFavorite = isFav;
       });
     }
+  }
+
+  void _validateImage() {
+    final imageUrl = _getBestImageUrl();
+    if (imageUrl.isEmpty) {
+      setState(() {
+        _hasValidImage = false;
+      });
+    }
+  }
+
+  String _getBestImageUrl() {
+    if (widget.artwork.fileUrl?.isNotEmpty == true) {
+      return widget.artwork.fileUrl!;
+    }
+    if (widget.artwork.previewFileUrl?.isNotEmpty == true) {
+      return widget.artwork.previewFileUrl!;
+    }
+    return '';
   }
 
   void _toggleFavorite() async {
@@ -129,6 +149,10 @@ class _ArtworkCardState extends State<ArtworkCard> {
 
   @override
   Widget build(BuildContext context) {
+    if (!_hasValidImage) {
+      return const SizedBox.shrink();
+    }
+
     return Card(
       clipBehavior: Clip.antiAlias,
       elevation: 4,
@@ -151,7 +175,6 @@ class _ArtworkCardState extends State<ArtworkCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image
             Expanded(
               flex: 3,
               child: Stack(
@@ -159,9 +182,11 @@ class _ArtworkCardState extends State<ArtworkCard> {
                   Container(
                     width: double.infinity,
                     height: double.infinity,
+                    color: Colors.grey[900], // Dark background for letterboxing
                     child: CachedNetworkImage(
-                      imageUrl: widget.artwork.previewFileUrl ?? '',
-                      fit: BoxFit.cover,
+                      imageUrl: _getBestImageUrl(),
+                      fit: BoxFit
+                          .contain, // This will maintain aspect ratio with letterboxing
                       placeholder: (context, url) => Container(
                         color: Theme.of(context).colorScheme.surface,
                         child: Center(
@@ -170,72 +195,71 @@ class _ArtworkCardState extends State<ArtworkCard> {
                           ),
                         ),
                       ),
-                      errorWidget: (context, url, error) => Container(
-                        color: Theme.of(context).colorScheme.surface,
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.broken_image,
-                                size: 32,
-                                color: Colors.grey,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'No Image',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                      errorWidget: (context, url, error) {
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) {
+                            setState(() {
+                              _hasValidImage = false;
+                            });
+                          }
+                        });
+                        return const SizedBox.shrink();
+                      },
                     ),
                   ),
 
-                  // Rating badge
                   Positioned(
-                    top: 4,
-                    left: 4,
+                    top: 6,
+                    left: 6,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 2,
+                        horizontal: 6,
+                        vertical: 3,
                       ),
                       decoration: BoxDecoration(
                         color: _getRatingColor(),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: Text(
                         _getRatingText(),
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 8,
+                          fontSize: 10,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                   ),
 
-                  // Favorite button
                   Positioned(
-                    top: 4,
-                    right: 4,
+                    top: 6,
+                    right: 6,
                     child: GestureDetector(
                       onTap: _toggleFavorite,
                       child: Container(
-                        padding: const EdgeInsets.all(4),
+                        padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.7),
                           shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Icon(
                           _isFavorite ? Icons.favorite : Icons.favorite_border,
                           color: _isFavorite ? Colors.red : Colors.white,
-                          size: 16,
+                          size: 18,
                         ),
                       ),
                     ),
@@ -244,33 +268,56 @@ class _ArtworkCardState extends State<ArtworkCard> {
               ),
             ),
 
-            // Info
             Expanded(
               flex: 1,
-              child: Padding(
-                padding: const EdgeInsets.all(6.0),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8.0,
+                  vertical: 2.0, // Reduced padding
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  mainAxisAlignment:
+                      MainAxisAlignment.start, // Changed from center to start
                   children: [
-                    // ID and Score
+                    // Move artist tag to the top
+                    if (widget.artwork.tagStringArtist?.isNotEmpty == true)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          widget.artwork.tagStringArtist!.split(' ').first,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                fontSize: 11, // Slightly larger
+                                color: Colors.grey[300], // Brighter
+                                fontWeight: FontWeight.w500,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          '#${widget.artwork.id}',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
+                        Expanded(
+                          child: Text(
+                            '#${widget.artwork.id}',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 10, // Slightly smaller
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                         Row(
                           children: [
                             Icon(
                               Icons.thumb_up,
-                              size: 10,
+                              size: 10, // Smaller icon
                               color: Theme.of(context).colorScheme.primary,
                             ),
                             const SizedBox(width: 2),
@@ -278,7 +325,7 @@ class _ArtworkCardState extends State<ArtworkCard> {
                               '${widget.artwork.score}',
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
-                                    fontSize: 10,
+                                    fontSize: 10, // Smaller
                                     color: Theme.of(
                                       context,
                                     ).colorScheme.onSurface,
@@ -288,18 +335,6 @@ class _ArtworkCardState extends State<ArtworkCard> {
                         ),
                       ],
                     ),
-
-                    // Artist (if available)
-                    if (widget.artwork.tagStringArtist?.isNotEmpty == true)
-                      Text(
-                        widget.artwork.tagStringArtist!.split(' ').first,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          fontSize: 9,
-                          color: Colors.grey,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
                   ],
                 ),
               ),

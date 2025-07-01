@@ -53,6 +53,14 @@ class AboutScreen extends StatelessWidget {
                       context,
                     ).textTheme.bodyMedium?.copyWith(color: Colors.grey),
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Created by Liivx',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ],
               ),
             ),

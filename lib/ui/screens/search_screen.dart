@@ -47,7 +47,6 @@ class _SearchScreenState extends State<SearchScreen> {
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      // Load more when near the bottom
       context.read<AppState>().loadMoreResults();
     }
   }
@@ -73,7 +72,6 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
       body: Column(
         children: [
-          // Search Bar
           Container(
             padding: const EdgeInsets.all(16.0),
             decoration: BoxDecoration(
@@ -109,7 +107,6 @@ class _SearchScreenState extends State<SearchScreen> {
                   ],
                 ),
                 const SizedBox(height: 8),
-                // Rating Filter
                 Row(
                   children: [
                     const Text('Rating: '),
@@ -136,7 +133,6 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ),
 
-          // Quick Prompts
           Container(
             height: 60,
             padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -189,11 +185,9 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ),
 
-          // Results
           Expanded(
             child: Consumer<AppState>(
               builder: (context, appState, child) {
-                // Error handling
                 if (appState.errorMessage.isNotEmpty) {
                   return Center(
                     child: Column(
@@ -222,7 +216,6 @@ class _SearchScreenState extends State<SearchScreen> {
                   );
                 }
 
-                // Loading state
                 if (appState.isLoading && appState.searchResults.isEmpty) {
                   return const Center(
                     child: Column(
@@ -236,7 +229,6 @@ class _SearchScreenState extends State<SearchScreen> {
                   );
                 }
 
-                // Empty state
                 if (appState.searchResults.isEmpty) {
                   return const Center(
                     child: Column(

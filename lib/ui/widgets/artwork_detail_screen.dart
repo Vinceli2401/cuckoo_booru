@@ -4,6 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:cuckoo_booru/models/artwork.dart';
 import 'package:cuckoo_booru/ui/providers/app_state.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 
 class ArtworkDetailScreen extends StatefulWidget {
   final Artwork artwork;
@@ -16,11 +19,14 @@ class ArtworkDetailScreen extends StatefulWidget {
 
 class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
   bool _isFavorite = false;
+  bool _hasValidImage = true;
+  bool _isDownloading = false;
 
   @override
   void initState() {
     super.initState();
     _checkFavoriteStatus();
+    _validateImage();
   }
 
   void _checkFavoriteStatus() async {
@@ -30,6 +36,25 @@ class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
         _isFavorite = isFav;
       });
     }
+  }
+
+  void _validateImage() {
+    final imageUrl = _getBestImageUrl();
+    if (imageUrl.isEmpty) {
+      setState(() {
+        _hasValidImage = false;
+      });
+    }
+  }
+
+  String _getBestImageUrl() {
+    if (widget.artwork.fileUrl?.isNotEmpty == true) {
+      return widget.artwork.fileUrl!;
+    }
+    if (widget.artwork.previewFileUrl?.isNotEmpty == true) {
+      return widget.artwork.previewFileUrl!;
+    }
+    return '';
   }
 
   void _toggleFavorite() async {
@@ -63,15 +88,64 @@ class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
     }
   }
 
-  Future<void> _launchUrl(String url) async {
-    final uri = Uri.parse(url);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
+  Future<void> _downloadImage() async {
+    if (_isDownloading) return;
+
+    setState(() {
+      _isDownloading = true;
+    });
+
+    try {
+      final imageUrl = _getBestImageUrl();
+      if (imageUrl.isEmpty) {
+        throw Exception('No image URL available');
+      }
+
+      // Get Downloads directory
+      final Directory? downloadsDir = await getDownloadsDirectory();
+      if (downloadsDir == null) {
+        throw Exception('Could not access Downloads folder');
+      }
+
+      // Create filename
+      final String extension = imageUrl.split('.').last.split('?').first;
+      final String filename = 'cuckoo_booru_${widget.artwork.id}.$extension';
+      final String savePath = '${downloadsDir.path}/$filename';
+
+      // Download the image
+      final dio = Dio();
+      await dio.download(imageUrl, savePath);
+
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Could not launch $url')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Image saved to Downloads/$filename'),
+            backgroundColor: Colors.green,
+            action: SnackBarAction(
+              label: 'Open Folder',
+              onPressed: () async {
+                if (Platform.isWindows) {
+                  await Process.run('explorer', [downloadsDir.path]);
+                }
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to download image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+        });
       }
     }
   }
@@ -82,6 +156,17 @@ class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
       appBar: AppBar(
         title: Text('Post #${widget.artwork.id}'),
         actions: [
+          IconButton(
+            icon: _isDownloading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download),
+            onPressed: _isDownloading ? null : _downloadImage,
+            tooltip: 'Download image',
+          ),
           IconButton(
             icon: Icon(
               _isFavorite ? Icons.favorite : Icons.favorite_border,
@@ -97,80 +182,110 @@ class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Main Image
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: CachedNetworkImage(
-                imageUrl:
-                    widget.artwork.fileUrl ??
-                    widget.artwork.previewFileUrl ??
-                    '',
-                fit: BoxFit.cover,
+            if (_hasValidImage)
+              Container(
                 width: double.infinity,
-                placeholder: (context, url) => Container(
-                  height: 300,
-                  color: Colors.grey[300],
-                  child: const Center(child: CircularProgressIndicator()),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  height: 300,
-                  color: Colors.grey[300],
-                  child: const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.broken_image, size: 64, color: Colors.grey),
-                        SizedBox(height: 8),
-                        Text(
-                          'Image not available',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ],
+                constraints: const BoxConstraints(maxHeight: 600),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: CachedNetworkImage(
+                    imageUrl: _getBestImageUrl(),
+                    fit: BoxFit.contain,
+                    placeholder: (context, url) => Container(
+                      height: 300,
+                      color: Colors.grey[800],
+                      child: const Center(child: CircularProgressIndicator()),
                     ),
+                    errorWidget: (context, url, error) {
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          setState(() {
+                            _hasValidImage = false;
+                          });
+                        }
+                      });
+                      return Container(
+                        height: 300,
+                        color: Colors.grey[800],
+                        child: const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.broken_image,
+                                size: 64,
+                                color: Colors.grey,
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Image not available',
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
-            ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
-            // Basic Info Card
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(12.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Basic Information',
+                      'Information',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
-                    const SizedBox(height: 12),
-
-                    _buildInfoRow('Post ID', '#${widget.artwork.id}'),
-                    _buildInfoRow('Score', '${widget.artwork.score}'),
-                    _buildInfoRow(
-                      'Rating',
-                      _getRatingText(),
-                      color: _getRatingColor(),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildInfoRow('ID', '#${widget.artwork.id}'),
+                        ),
+                        Expanded(
+                          child: _buildInfoRow(
+                            'Score',
+                            '${widget.artwork.score}',
+                          ),
+                        ),
+                      ],
                     ),
-                    _buildInfoRow(
-                      'Created',
-                      '${widget.artwork.createdAt.day}/${widget.artwork.createdAt.month}/${widget.artwork.createdAt.year}',
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildInfoRow(
+                            'Rating',
+                            _getRatingText(),
+                            color: _getRatingColor(),
+                          ),
+                        ),
+                        Expanded(
+                          child: _buildInfoRow(
+                            'Date',
+                            '${widget.artwork.createdAt.day}/${widget.artwork.createdAt.month}/${widget.artwork.createdAt.year}',
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
 
-            // Tags Card
             Card(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(12.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -178,9 +293,10 @@ class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
                       'Tags',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 8),
 
                     if (widget.artwork.tagStringArtist?.isNotEmpty == true)
                       _buildTagSection(
@@ -203,40 +319,39 @@ class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
                         Colors.purple,
                       ),
 
-                    if (widget.artwork.tagString.isNotEmpty)
-                      _buildTagSection(
-                        'General',
-                        widget.artwork.tagString,
-                        Colors.blue,
-                      ),
+                    _buildTagSection(
+                      'General',
+                      widget.artwork.tagString,
+                      Colors.blue,
+                    ),
                   ],
                 ),
               ),
             ),
 
-            const SizedBox(height: 16),
-
-            // Source Card
-            if (widget.artwork.source?.isNotEmpty == true)
+            if (widget.artwork.source?.isNotEmpty == true) ...[
+              const SizedBox(height: 8),
               Card(
                 child: Padding(
-                  padding: const EdgeInsets.all(16.0),
+                  padding: const EdgeInsets.all(12.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Source',
                         style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                            ?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
                       ),
-                      const SizedBox(height: 12),
-
+                      const SizedBox(height: 8),
                       InkWell(
                         onTap: () => _launchUrl(widget.artwork.source!),
                         child: Text(
                           widget.artwork.source!,
                           style: TextStyle(
-                            color: Theme.of(context).primaryColor,
+                            color: Theme.of(context).colorScheme.primary,
                             decoration: TextDecoration.underline,
                           ),
                         ),
@@ -245,33 +360,44 @@ class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
                   ),
                 ),
               ),
+            ],
           ],
         ),
       ),
     );
   }
 
+  Future<void> _launchUrl(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not launch $url')));
+      }
+    }
+  }
+
   Widget _buildInfoRow(String label, String value, {Color? color}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
+      padding: const EdgeInsets.symmetric(vertical: 2.0),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              '$label:',
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[400],
             ),
           ),
-          Expanded(
-            child: Text(
-              value,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyMedium?.copyWith(color: color),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: color ?? Theme.of(context).colorScheme.onSurface,
+              fontWeight: color != null ? FontWeight.bold : null,
             ),
           ),
         ],
@@ -279,34 +405,39 @@ class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
     );
   }
 
-  Widget _buildTagSection(String category, String tags, Color color) {
+  Widget _buildTagSection(String title, String tags, Color color) {
     final tagList = tags.split(' ').where((tag) => tag.isNotEmpty).toList();
 
+    if (tagList.isEmpty) return const SizedBox.shrink();
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.only(bottom: 8.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '$category:',
+            title,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.bold,
               color: color,
             ),
           ),
           const SizedBox(height: 4),
           Wrap(
             spacing: 4,
-            runSpacing: 4,
-            children: tagList
-                .map(
-                  (tag) => Chip(
-                    label: Text(tag, style: const TextStyle(fontSize: 12)),
-                    backgroundColor: color.withValues(alpha: 0.1),
-                    side: BorderSide(color: color.withValues(alpha: 0.3)),
-                  ),
-                )
-                .toList(),
+            runSpacing: 2,
+            children: tagList.map((tag) {
+              return Chip(
+                label: Text(
+                  tag.replaceAll('_', ' '),
+                  style: const TextStyle(fontSize: 11),
+                ),
+                backgroundColor: color.withValues(alpha: 0.1),
+                side: BorderSide(color: color.withValues(alpha: 0.3)),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              );
+            }).toList(),
           ),
         ],
       ),
