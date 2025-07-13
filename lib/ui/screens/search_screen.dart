@@ -15,21 +15,6 @@ class _SearchScreenState extends State<SearchScreen> {
   final ScrollController _scrollController = ScrollController();
   String _selectedRating = 'all';
 
-  // Quick prompt suggestions
-  final List<String> _quickPrompts = [
-    'pokemon_masters_ex',
-    'genshin_impact',
-    'fate/grand_order',
-    'azur_lane',
-    'blue_archive',
-    'honkai_impact_3rd',
-    'arknights',
-    'touhou',
-    'kantai_collection',
-    'fire_emblem',
-    'final_fantasy',
-    'league_of_legends',
-  ];
 
   @override
   void initState() {
@@ -149,39 +134,49 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                SizedBox(
-                  height: 48,
-                  child: ListView.builder(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                    itemCount: _quickPrompts.length,
-                    itemBuilder: (context, index) {
-                      final prompt = _quickPrompts[index];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                        child: ActionChip(
-                          label: Text(
-                            prompt,
-                            style: const TextStyle(fontSize: 12),
-                            textAlign: TextAlign.center,
-                          ),
-                          onPressed: () => _searchPrompt(prompt),
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.primaryContainer,
-                          side: BorderSide(
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                          labelStyle: TextStyle(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onPrimaryContainer,
-                          ),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                      );
-                    },
-                  ),
+                Consumer<AppState>(
+                  builder: (context, appState, child) {
+                    if (appState.quickSearchTags.isEmpty) {
+                      return Container();
+                    }
+                    return SizedBox(
+                      height: 48,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                        itemCount: appState.quickSearchTags.length,
+                        itemBuilder: (context, index) {
+                          final tag = appState.quickSearchTags[index];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+                            child: InputChip(
+                              label: Text(
+                                tag,
+                                style: const TextStyle(fontSize: 12),
+                                textAlign: TextAlign.center,
+                              ),
+                              onPressed: () => _searchPrompt(tag),
+                              onDeleted: () => context.read<AppState>().removeQuickSearchTag(tag),
+                              deleteIcon: const Icon(Icons.close, size: 16),
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.primaryContainer,
+                              side: BorderSide(
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              labelStyle: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onPrimaryContainer,
+                              ),
+                              deleteIconColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
