@@ -134,7 +134,6 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
 
           Container(
-            height: 60,
             padding: const EdgeInsets.symmetric(vertical: 8.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -150,7 +149,8 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                 ),
                 const SizedBox(height: 4),
-                Expanded(
+                SizedBox(
+                  height: 48,
                   child: ListView.builder(
                     scrollDirection: Axis.horizontal,
                     padding: const EdgeInsets.symmetric(horizontal: 12.0),
@@ -162,7 +162,8 @@ class _SearchScreenState extends State<SearchScreen> {
                         child: ActionChip(
                           label: Text(
                             prompt,
-                            style: const TextStyle(fontSize: 11),
+                            style: const TextStyle(fontSize: 12),
+                            textAlign: TextAlign.center,
                           ),
                           onPressed: () => _searchPrompt(prompt),
                           backgroundColor: Theme.of(
@@ -176,6 +177,7 @@ class _SearchScreenState extends State<SearchScreen> {
                               context,
                             ).colorScheme.onPrimaryContainer,
                           ),
+                          visualDensity: VisualDensity.compact,
                         ),
                       );
                     },
