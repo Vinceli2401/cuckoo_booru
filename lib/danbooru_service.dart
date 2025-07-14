@@ -37,19 +37,25 @@ class DanbooruService {
       'page': page.toString(),
     };
 
-    if (tags != null && tags.isNotEmpty) {
-      queryParams['tags'] = tags;
+    if (tags != null && tags.trim().isNotEmpty) {
+      queryParams['tags'] = tags.trim();
     }
 
     if (rating != 'all') {
       final ratingTag = 'rating:$rating';
-      queryParams['tags'] = tags != null ? '$tags $ratingTag' : ratingTag;
+      final currentTags = queryParams['tags'];
+      if (currentTags != null && currentTags.isNotEmpty) {
+        queryParams['tags'] = '$currentTags $ratingTag';
+      } else {
+        queryParams['tags'] = ratingTag;
+      }
     }
 
     final uri = Uri.parse(
       '$baseUrl/posts.json',
     ).replace(queryParameters: queryParams);
 
+    
     try {
       final response = await _client.get(uri, headers: _headers);
 
@@ -126,6 +132,110 @@ class DanbooruService {
     } catch (e) {
       throw Exception('Error removing from favorites: $e');
     }
+  }
+
+  Future<List<String>> searchTags({
+    required String query,
+    int limit = 20,
+  }) async {
+    if (query.trim().isEmpty) return [];
+
+    final queryParams = <String, String>{
+      'limit': limit.toString(),
+      'search[name_matches]': '${query.trim()}*', // Wildcard search
+    };
+
+    final uri = Uri.parse(
+      '$baseUrl/tags.json',
+    ).replace(queryParameters: queryParams);
+
+    try {
+      final response = await _client.get(uri, headers: _headers);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> jsonList = json.decode(response.body);
+        return jsonList
+            .map((json) => json['name'] as String)
+            .where((name) => name.isNotEmpty)
+            .toList();
+      } else {
+        return [];
+      }
+    } catch (e) {
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>> searchPostsWithFuzzy({
+    String? tags,
+    int limit = 20,
+    int page = 1,
+    String rating = 'all',
+  }) async {
+    if (tags == null || tags.trim().isEmpty) {
+      final results = await searchPosts(
+        tags: tags,
+        limit: limit,
+        page: page,
+        rating: rating,
+      );
+      return {
+        'results': results,
+        'usedSuggestion': false,
+        'suggestedTag': null,
+      };
+    }
+
+    // First try exact search
+    final exactResults = await searchPosts(
+      tags: tags,
+      limit: limit,
+      page: page,
+      rating: rating,
+    );
+
+    // If we got results, return them
+    if (exactResults.isNotEmpty) {
+      return {
+        'results': exactResults,
+        'usedSuggestion': false,
+        'suggestedTag': null,
+      };
+    }
+
+    // If no exact results, try fuzzy search by finding similar tags
+    final words = tags.trim().toLowerCase().split(RegExp(r'\s+'));
+    final List<String> suggestedTags = [];
+
+    for (final word in words) {
+      if (word.length >= 2) {
+        final tagSuggestions = await searchTags(query: word, limit: 5);
+        suggestedTags.addAll(tagSuggestions);
+      }
+    }
+
+    // Try search with suggested tags
+    if (suggestedTags.isNotEmpty) {
+      final suggestedTag = suggestedTags.first;
+      final fuzzyResults = await searchPosts(
+        tags: suggestedTag,
+        limit: limit,
+        page: page,
+        rating: rating,
+      );
+      
+      return {
+        'results': fuzzyResults,
+        'usedSuggestion': fuzzyResults.isNotEmpty,
+        'suggestedTag': fuzzyResults.isNotEmpty ? suggestedTag : null,
+      };
+    }
+
+    return {
+      'results': exactResults,
+      'usedSuggestion': false,
+      'suggestedTag': null,
+    };
   }
 
   void dispose() {

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:async';
 import 'package:cuckoo_booru/ui/providers/app_state.dart';
 import 'package:cuckoo_booru/ui/widgets/artwork_grid.dart';
+import 'package:cuckoo_booru/ui/screens/advanced_search_screen.dart';
+import 'package:cuckoo_booru/ui/widgets/tag_autocomplete_field.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -14,16 +17,30 @@ class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   String _selectedRating = 'all';
+  Timer? _debounceTimer;
 
 
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPendingSearchText();
+    });
+  }
+
+  void _checkPendingSearchText() {
+    final appState = context.read<AppState>();
+    if (appState.pendingSearchText.isNotEmpty) {
+      _searchController.text = appState.pendingSearchText;
+      appState.clearPendingSearchText();
+    }
   }
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -36,16 +53,22 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  void _performSearch() {
+
+  void _performSearchImmediate() {
+    _debounceTimer?.cancel();
     final tags = _searchController.text.trim();
-    if (tags.isNotEmpty) {
-      context.read<AppState>().searchPosts(tags: tags, rating: _selectedRating);
-    }
+    context.read<AppState>().searchPosts(
+      tags: tags, 
+      rating: _selectedRating,
+    );
   }
 
   void _searchPrompt(String prompt) {
     _searchController.text = prompt;
-    context.read<AppState>().searchPosts(tags: prompt, rating: _selectedRating);
+    context.read<AppState>().searchPosts(
+      tags: prompt, 
+      rating: _selectedRating,
+    );
   }
 
   @override
@@ -54,6 +77,17 @@ class _SearchScreenState extends State<SearchScreen> {
       appBar: AppBar(
         title: const Text('CuckooBooru'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          IconButton(
+            icon: Icon(
+              context.watch<AppState>().themeMode == ThemeMode.dark
+                  ? Icons.light_mode
+                  : Icons.dark_mode,
+            ),
+            onPressed: () => context.read<AppState>().toggleTheme(),
+            tooltip: 'Toggle theme',
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -74,19 +108,37 @@ class _SearchScreenState extends State<SearchScreen> {
                 Row(
                   children: [
                     Expanded(
-                      child: TextField(
+                      child: TagAutocompleteField(
                         controller: _searchController,
-                        decoration: const InputDecoration(
-                          hintText: 'Search tags (e.g., cat, dog, anime)',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.search),
-                        ),
-                        onSubmitted: (_) => _performSearch(),
+                        hintText: 'Search tags (e.g., cat, dog, anime)',
+                        prefixIcon: const Icon(Icons.search),
+                        onSubmitted: (_) => _performSearchImmediate(),
                       ),
                     ),
                     const SizedBox(width: 8),
+                    IconButton(
+                      onPressed: () async {
+                        await Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const AdvancedSearchScreen(),
+                          ),
+                        );
+                      },
+                      icon: Consumer<AppState>(
+                        builder: (context, appState, child) {
+                          return Icon(
+                            Icons.tune,
+                            color: appState.currentFilters.hasActiveFilters
+                                ? Theme.of(context).colorScheme.primary
+                                : null,
+                          );
+                        },
+                      ),
+                      tooltip: 'Advanced Search',
+                    ),
+                    const SizedBox(width: 8),
                     ElevatedButton(
-                      onPressed: _performSearch,
+                      onPressed: _performSearchImmediate,
                       child: const Text('Search'),
                     ),
                   ],
@@ -113,6 +165,88 @@ class _SearchScreenState extends State<SearchScreen> {
                       ],
                     ),
                   ],
+                ),
+                Consumer<AppState>(
+                  builder: (context, appState, child) {
+                    return Column(
+                      children: [
+                        // Search suggestion
+                        if (appState.searchSuggestion.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            margin: const EdgeInsets.only(top: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.auto_fix_high,
+                                  size: 16,
+                                  color: Colors.orange,
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    appState.searchSuggestion,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.orange[800],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        // Active filters
+                        if (appState.currentFilters.hasActiveFilters) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            margin: const EdgeInsets.only(top: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primaryContainer,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.filter_alt,
+                                  size: 16,
+                                  color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    appState.currentFilters.filterSummary,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: () => appState.clearSearchFilters(),
+                                  child: Icon(
+                                    Icons.close,
+                                    size: 16,
+                                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ],
+                    );
+                  },
                 ),
               ],
             ),

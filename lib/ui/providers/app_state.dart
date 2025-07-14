@@ -1,6 +1,7 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cuckoo_booru/models/artwork.dart';
+import 'package:cuckoo_booru/models/search_filters.dart';
 import 'package:cuckoo_booru/danbooru_service.dart';
 import 'package:cuckoo_booru/favorites_manager.dart';
 
@@ -15,9 +16,14 @@ class AppState extends ChangeNotifier {
   String _errorMessage = '';
   int _currentPage = 1;
   String _currentSearchTags = '';
+  String _pendingSearchText = '';
+  String _searchSuggestion = '';
+  ThemeMode _themeMode = ThemeMode.dark;
+  SearchFilters _currentFilters = const SearchFilters();
 
   AppState() {
     _loadQuickSearchTags();
+    _loadThemeMode();
   }
 
   // Getters
@@ -28,6 +34,10 @@ class AppState extends ChangeNotifier {
   String get errorMessage => _errorMessage;
   int get currentPage => _currentPage;
   String get currentSearchTags => _currentSearchTags;
+  String get pendingSearchText => _pendingSearchText;
+  String get searchSuggestion => _searchSuggestion;
+  ThemeMode get themeMode => _themeMode;
+  SearchFilters get currentFilters => _currentFilters;
 
   // Search functionality
   Future<void> searchPosts({
@@ -35,24 +45,36 @@ class AppState extends ChangeNotifier {
     int page = 1,
     String rating = 'all',
     bool append = false,
+    bool updateSearchText = false,
+    SearchFilters? filters,
   }) async {
     if (!append) {
       _isLoading = true;
       _errorMessage = '';
       _searchResults.clear();
       _currentPage = 1;
+      notifyListeners(); // Notify immediately to show loading
     }
 
     _currentSearchTags = tags;
-    notifyListeners();
+    _currentFilters = filters ?? _currentFilters.copyWith(tags: tags, rating: rating);
+    
+    if (updateSearchText) {
+      _pendingSearchText = tags;
+    }
+    
 
     try {
-      final results = await _danbooruService.searchPosts(
+      final searchResult = await _danbooruService.searchPostsWithFuzzy(
         tags: tags,
         page: page,
         rating: rating,
         limit: 20,
       );
+
+      final results = searchResult['results'] as List<Artwork>;
+      final usedSuggestion = searchResult['usedSuggestion'] as bool;
+      final suggestedTag = searchResult['suggestedTag'] as String?;
 
       if (append) {
         _searchResults.addAll(results);
@@ -63,8 +85,13 @@ class AppState extends ChangeNotifier {
       }
 
       _errorMessage = '';
+      _searchSuggestion = usedSuggestion && suggestedTag != null 
+          ? 'Showing results for "$suggestedTag" instead'
+          : '';
       
-      if (!append && tags.trim().isNotEmpty) {
+      
+      // Only add to quick search if it's a successful search with tags
+      if (!append && tags.trim().isNotEmpty && _searchResults.isNotEmpty) {
         addQuickSearchTag(tags.trim());
       }
     } catch (e) {
@@ -148,6 +175,44 @@ class AppState extends ChangeNotifier {
   }
 
   // Clear error message
+  void clearPendingSearchText() {
+    _pendingSearchText = '';
+    notifyListeners();
+  }
+
+  // Theme management
+  Future<void> _loadThemeMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    final themeIndex = prefs.getInt('theme_mode') ?? ThemeMode.dark.index;
+    _themeMode = ThemeMode.values[themeIndex];
+    notifyListeners();
+  }
+
+  Future<void> _saveThemeMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('theme_mode', _themeMode.index);
+  }
+
+  void toggleTheme() {
+    _themeMode = _themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark;
+    _saveThemeMode();
+    notifyListeners();
+  }
+
+  // Search filters management
+  void updateSearchFilters(SearchFilters filters) {
+    _currentFilters = filters;
+    notifyListeners();
+  }
+
+  void clearSearchFilters() {
+    _currentFilters = SearchFilters(
+      tags: _currentFilters.tags,
+      rating: _currentFilters.rating,
+    );
+    notifyListeners();
+  }
+
   void clearError() {
     _errorMessage = '';
     notifyListeners();

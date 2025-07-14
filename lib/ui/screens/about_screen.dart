@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cuckoo_booru/ui/screens/stats_screen.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({super.key});
@@ -6,7 +7,20 @@ class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('About CuckooBooru')),
+      appBar: AppBar(
+        title: const Text('About CuckooBooru'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.analytics),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const StatsScreen()),
+              );
+            },
+            tooltip: 'Statistics',
+          ),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -92,39 +106,26 @@ class AboutScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // Features Card
+            // Love Card
             Card(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(
-                      'Features',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildFeatureItem(
-                      context,
-                      Icons.search,
-                      'Search artwork by tags',
-                    ),
-                    _buildFeatureItem(
-                      context,
+                    Icon(
                       Icons.favorite,
-                      'Save favorites locally',
+                      size: 48,
+                      color: Colors.red,
                     ),
-                    _buildFeatureItem(
-                      context,
-                      Icons.filter_alt,
-                      'Content rating filters',
-                    ),
-                    _buildFeatureItem(
-                      context,
-                      Icons.grid_view,
-                      'Beautiful grid layout',
+                    const SizedBox(height: 16),
+                    Text(
+                      'Love from Liivx',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
@@ -148,18 +149,4 @@ class AboutScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFeatureItem(BuildContext context, IconData icon, String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(text, style: Theme.of(context).textTheme.bodyMedium),
-          ),
-        ],
-      ),
-    );
-  }
 }

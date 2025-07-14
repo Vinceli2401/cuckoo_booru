@@ -427,20 +427,29 @@ class _ArtworkDetailScreenState extends State<ArtworkDetailScreen> {
             spacing: 4,
             runSpacing: 2,
             children: tagList.map((tag) {
-              return Chip(
+              return ActionChip(
                 label: Text(
                   tag.replaceAll('_', ' '),
                   style: const TextStyle(fontSize: 11),
                 ),
+                onPressed: () => _searchTag(tag),
                 backgroundColor: color.withValues(alpha: 0.1),
                 side: BorderSide(color: color.withValues(alpha: 0.3)),
                 padding: const EdgeInsets.symmetric(horizontal: 4),
                 materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                labelStyle: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               );
             }).toList(),
           ),
         ],
       ),
     );
+  }
+
+  void _searchTag(String tag) {
+    context.read<AppState>().searchPosts(tags: tag, rating: 'all', updateSearchText: true);
+    Navigator.of(context).pop();
   }
 }

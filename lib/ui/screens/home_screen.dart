@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:cuckoo_booru/ui/providers/app_state.dart';
 import 'package:cuckoo_booru/ui/screens/search_screen.dart';
 import 'package:cuckoo_booru/ui/screens/favorites_screen.dart';
+import 'package:cuckoo_booru/ui/screens/collections_screen.dart';
 import 'package:cuckoo_booru/ui/screens/about_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _screens = [
     const SearchScreen(),
     const FavoritesScreen(),
+    const CollectionsScreen(),
     const AboutScreen(),
   ];
 
@@ -52,6 +54,10 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.favorite),
             label: 'Favorites',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.collections_bookmark),
+            label: 'Collections',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.info), label: 'About'),
         ],
