@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter create:*)",
+      "Bash(flutter pub:*)",
+      "Bash(flutter:*)",
+      "Bash(chmod:*)",
+      "Bash(echo $OSTYPE)",
+      "Bash(./run_ios.sh:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": []
+  }
+}

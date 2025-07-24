@@ -89,10 +89,16 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16.0),
+      body: SafeArea(
+        child: Column(
+          children: [
+            Container(
+              padding: EdgeInsets.fromLTRB(
+                16.0,
+                MediaQuery.of(context).padding.top > 0 ? 8.0 : 16.0,
+                16.0,
+                16.0,
+              ),
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.surface,
               border: Border(
@@ -391,6 +397,7 @@ class _SearchScreenState extends State<SearchScreen> {
             ),
           ),
         ],
+        ),
       ),
     );
   }

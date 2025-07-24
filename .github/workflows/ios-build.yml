@@ -1,0 +1,43 @@
+name: iOS Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  ios-build:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.32.5'
+        channel: 'stable'
+    
+    - name: Install dependencies
+      run: flutter pub get
+    
+    - name: Install iOS dependencies
+      run: |
+        cd ios
+        pod install
+        cd ..
+    
+    - name: Build iOS app
+      run: flutter build ipa --release --export-method development
+    
+    - name: Run iOS tests
+      run: flutter test
+    
+    - name: Upload IPA file
+      uses: actions/upload-artifact@v4
+      with:
+        name: ios-ipa
+        path: build/ios/ipa/*.ipa
+        retention-days: 30
