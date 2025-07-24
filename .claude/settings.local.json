@@ -7,7 +7,12 @@
       "Bash(chmod:*)",
       "Bash(echo $OSTYPE)",
       "Bash(./run_ios.sh:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }
