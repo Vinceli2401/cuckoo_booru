@@ -117,10 +117,6 @@ class _TagAutocompleteFieldState extends State<TagAutocompleteField> {
     });
   }
 
-  double _getTextFieldWidth() {
-    final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
-    return renderBox?.size.width ?? 300;
-  }
 
   @override
   Widget build(BuildContext context) {
