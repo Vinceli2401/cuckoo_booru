@@ -12,7 +12,9 @@
       "Bash(git push:*)",
       "Bash(find:*)",
       "Bash(ls:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(./run_app.bat)",
+      "Bash(cmd /c:*)"
     ],
     "deny": []
   }

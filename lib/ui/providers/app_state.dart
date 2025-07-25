@@ -69,6 +69,7 @@ class AppState extends ChangeNotifier {
         tags: tags,
         page: page,
         rating: rating,
+        sortOrder: _currentFilters.sortOrder,
         limit: 20,
       );
 
@@ -109,7 +110,9 @@ class AppState extends ChangeNotifier {
     await searchPosts(
       tags: _currentSearchTags,
       page: _currentPage + 1,
+      rating: _currentFilters.rating,
       append: true,
+      filters: _currentFilters,
     );
   }
 
@@ -209,6 +212,7 @@ class AppState extends ChangeNotifier {
     _currentFilters = SearchFilters(
       tags: _currentFilters.tags,
       rating: _currentFilters.rating,
+      sortOrder: _currentFilters.sortOrder,
     );
     notifyListeners();
   }

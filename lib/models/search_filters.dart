@@ -1,3 +1,5 @@
+enum SortOrder { dateDesc, dateAsc, scoreDesc, id }
+
 class SearchFilters {
   final String tags;
   final String rating;
@@ -8,6 +10,7 @@ class SearchFilters {
   final String? minWidth;
   final String? minHeight;
   final List<String> fileTypes;
+  final SortOrder sortOrder;
 
   const SearchFilters({
     this.tags = '',
@@ -19,6 +22,7 @@ class SearchFilters {
     this.minWidth,
     this.minHeight,
     this.fileTypes = const [],
+    this.sortOrder = SortOrder.id,
   });
 
   SearchFilters copyWith({
@@ -31,6 +35,7 @@ class SearchFilters {
     String? minWidth,
     String? minHeight,
     List<String>? fileTypes,
+    SortOrder? sortOrder,
   }) {
     return SearchFilters(
       tags: tags ?? this.tags,
@@ -42,6 +47,7 @@ class SearchFilters {
       minWidth: minWidth ?? this.minWidth,
       minHeight: minHeight ?? this.minHeight,
       fileTypes: fileTypes ?? this.fileTypes,
+      sortOrder: sortOrder ?? this.sortOrder,
     );
   }
 

@@ -5,6 +5,7 @@ import 'package:cuckoo_booru/ui/providers/app_state.dart';
 import 'package:cuckoo_booru/ui/widgets/artwork_grid.dart';
 import 'package:cuckoo_booru/ui/screens/advanced_search_screen.dart';
 import 'package:cuckoo_booru/ui/widgets/tag_autocomplete_field.dart';
+import 'package:cuckoo_booru/models/search_filters.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -57,17 +58,27 @@ class _SearchScreenState extends State<SearchScreen> {
   void _performSearchImmediate() {
     _debounceTimer?.cancel();
     final tags = _searchController.text.trim();
-    context.read<AppState>().searchPosts(
+    final appState = context.read<AppState>();
+    appState.searchPosts(
       tags: tags, 
       rating: _selectedRating,
+      filters: appState.currentFilters.copyWith(
+        tags: tags,
+        rating: _selectedRating,
+      ),
     );
   }
 
   void _searchPrompt(String prompt) {
     _searchController.text = prompt;
-    context.read<AppState>().searchPosts(
+    final appState = context.read<AppState>();
+    appState.searchPosts(
       tags: prompt, 
       rating: _selectedRating,
+      filters: appState.currentFilters.copyWith(
+        tags: prompt,
+        rating: _selectedRating,
+      ),
     );
   }
 
@@ -170,6 +181,35 @@ class _SearchScreenState extends State<SearchScreen> {
                         DropdownMenuItem(value: 'e', child: Text('Explicit')),
                       ],
                     ),
+                    const SizedBox(width: 24),
+                    Consumer<AppState>(
+                      builder: (context, appState, child) {
+                        return Row(
+                          children: [
+                            const Text('Sort: '),
+                            DropdownButton<SortOrder>(
+                              value: appState.currentFilters.sortOrder,
+                              onChanged: (value) {
+                                final newFilters = appState.currentFilters.copyWith(
+                                  sortOrder: value!,
+                                );
+                                appState.updateSearchFilters(newFilters);
+                                // Re-search with new sorting
+                                if (appState.searchResults.isNotEmpty) {
+                                  _performSearchImmediate();
+                                }
+                              },
+                              items: const [
+                                DropdownMenuItem(value: SortOrder.id, child: Text('Default')),
+                                DropdownMenuItem(value: SortOrder.dateDesc, child: Text('Date ↓')),
+                                DropdownMenuItem(value: SortOrder.dateAsc, child: Text('Date ↑')),
+                                DropdownMenuItem(value: SortOrder.scoreDesc, child: Text('Score ↓')),
+                              ],
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ],
                 ),
                 Consumer<AppState>(
@@ -179,33 +219,51 @@ class _SearchScreenState extends State<SearchScreen> {
                         // Search suggestion
                         if (appState.searchSuggestion.isNotEmpty) ...[
                           const SizedBox(height: 8),
-                          Container(
-                            margin: const EdgeInsets.only(top: 4),
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.orange.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.auto_fix_high,
-                                  size: 16,
-                                  color: Colors.orange,
-                                ),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                  child: Text(
-                                    appState.searchSuggestion,
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.orange[800],
+                          GestureDetector(
+                            onTap: () {
+                              // Extract the suggested tag from the message
+                              final suggestionMessage = appState.searchSuggestion;
+                              final match = RegExp(r'"([^"]+)"').firstMatch(suggestionMessage);
+                              if (match != null) {
+                                final suggestedTag = match.group(1)!;
+                                _searchController.text = suggestedTag;
+                                _performSearchImmediate();
+                              }
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.only(top: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.auto_fix_high,
+                                    size: 16,
+                                    color: Colors.orange,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      appState.searchSuggestion,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.orange[800],
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.touch_app,
+                                    size: 14,
+                                    color: Colors.orange[800],
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],

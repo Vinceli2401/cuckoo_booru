@@ -1,6 +1,8 @@
 import 'dart:convert';
-import 'dart:io';
 import 'models/artwork.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io' if (dart.library.html) 'io_stub.dart';
 
 class FavoritesManager {
   final String _favoritesPath;
@@ -10,14 +12,23 @@ class FavoritesManager {
 
   Future<List<Artwork>> loadFavorites() async {
     try {
-      final file = File(_favoritesPath);
-      if (!await file.exists()) {
-        return [];
-      }
+      if (kIsWeb) {
+        // Use SharedPreferences for web
+        final prefs = await SharedPreferences.getInstance();
+        final favoritesJson = prefs.getString('favorites') ?? '[]';
+        final List<dynamic> jsonList = json.decode(favoritesJson);
+        return jsonList.map((json) => Artwork.fromJson(json)).toList();
+      } else {
+        // Use file system for desktop/mobile
+        final file = File(_favoritesPath);
+        if (!await file.exists()) {
+          return [];
+        }
 
-      final contents = await file.readAsString();
-      final List<dynamic> jsonList = json.decode(contents);
-      return jsonList.map((json) => Artwork.fromJson(json)).toList();
+        final contents = await file.readAsString();
+        final List<dynamic> jsonList = json.decode(contents);
+        return jsonList.map((json) => Artwork.fromJson(json)).toList();
+      }
     } catch (e) {
       throw Exception('Error loading favorites: $e');
     }
@@ -25,9 +36,18 @@ class FavoritesManager {
 
   Future<void> saveFavorites(List<Artwork> favorites) async {
     try {
-      final file = File(_favoritesPath);
       final jsonList = favorites.map((artwork) => artwork.toJson()).toList();
-      await file.writeAsString(json.encode(jsonList));
+      final favoritesJson = json.encode(jsonList);
+      
+      if (kIsWeb) {
+        // Use SharedPreferences for web
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('favorites', favoritesJson);
+      } else {
+        // Use file system for desktop/mobile
+        final file = File(_favoritesPath);
+        await file.writeAsString(favoritesJson);
+      }
     } catch (e) {
       throw Exception('Error saving favorites: $e');
     }

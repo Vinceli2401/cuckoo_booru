@@ -23,7 +23,6 @@ class TagAutocompleteField extends StatefulWidget {
 class _TagAutocompleteFieldState extends State<TagAutocompleteField> {
   final DanbooruService _danbooruService = DanbooruService();
   final LayerLink _layerLink = LayerLink();
-  OverlayEntry? _overlayEntry;
   List<String> _suggestions = [];
   Timer? _debounceTimer;
   bool _showSuggestions = false;
@@ -37,7 +36,6 @@ class _TagAutocompleteFieldState extends State<TagAutocompleteField> {
   @override
   void dispose() {
     _debounceTimer?.cancel();
-    _removeOverlay();
     widget.controller.removeListener(_onTextChanged);
     _danbooruService.dispose();
     super.dispose();
@@ -63,11 +61,14 @@ class _TagAutocompleteFieldState extends State<TagAutocompleteField> {
   }
 
   Future<void> _searchTags(String query) async {
+    print('DEBUG: Searching for tags with query: $query');
     try {
       final suggestions = await _danbooruService.searchTags(
         query: query,
         limit: 8,
       );
+      
+      print('DEBUG: Got ${suggestions.length} suggestions: $suggestions');
       
       if (mounted) {
         setState(() {
@@ -76,27 +77,80 @@ class _TagAutocompleteFieldState extends State<TagAutocompleteField> {
         });
         
         if (_showSuggestions) {
-          _showOverlay();
+          print('DEBUG: Showing suggestions');
         } else {
-          _hideOverlay();
+          print('DEBUG: No suggestions to show');
         }
       }
     } catch (e) {
+      print('DEBUG: Error searching tags: $e');
       _hideSuggestions();
     }
   }
 
-  void _showOverlay() {
-    _removeOverlay();
+
+  void _selectSuggestion(String suggestion) {
+    print('DEBUG: Selected suggestion: $suggestion');
+    final text = widget.controller.text;
+    final words = text.split(RegExp(r'\s+'));
     
-    _overlayEntry = OverlayEntry(
-      builder: (context) => Positioned(
-        width: _getTextFieldWidth(),
-        child: CompositedTransformFollower(
+    if (words.isNotEmpty) {
+      words[words.length - 1] = suggestion;
+      widget.controller.text = words.join(' ');
+      widget.controller.selection = TextSelection.fromPosition(
+        TextPosition(offset: widget.controller.text.length),
+      );
+      print('DEBUG: Updated text field to: ${widget.controller.text}');
+    }
+    
+    _hideSuggestions();
+    
+    // Trigger search after selection
+    print('DEBUG: Triggering search with: ${widget.controller.text}');
+    widget.onSubmitted(widget.controller.text);
+  }
+
+  void _hideSuggestions() {
+    setState(() {
+      _showSuggestions = false;
+      _suggestions.clear();
+    });
+  }
+
+  double _getTextFieldWidth() {
+    final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
+    return renderBox?.size.width ?? 300;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CompositedTransformTarget(
           link: _layerLink,
-          showWhenUnlinked: false,
-          offset: const Offset(0, 56),
-          child: Material(
+          child: TextField(
+            controller: widget.controller,
+            decoration: InputDecoration(
+              hintText: widget.hintText,
+              border: const OutlineInputBorder(),
+              prefixIcon: widget.prefixIcon,
+              suffixIcon: _showSuggestions
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: _hideSuggestions,
+                    )
+                  : null,
+            ),
+            onSubmitted: (value) {
+              _hideSuggestions();
+              widget.onSubmitted(value);
+            },
+            // Removed onTapOutside to prevent interference with suggestion clicking
+          ),
+        ),
+        if (_showSuggestions && _suggestions.isNotEmpty)
+          Material(
             elevation: 4,
             borderRadius: BorderRadius.circular(8),
             child: Container(
@@ -114,86 +168,39 @@ class _TagAutocompleteFieldState extends State<TagAutocompleteField> {
                 itemCount: _suggestions.length,
                 itemBuilder: (context, index) {
                   final suggestion = _suggestions[index];
-                  return ListTile(
-                    dense: true,
-                    title: Text(
-                      suggestion,
-                      style: Theme.of(context).textTheme.bodyMedium,
+                  return GestureDetector(
+                    onTap: () {
+                      print('DEBUG: GestureDetector tapped for: $suggestion');
+                      _selectSuggestion(suggestion);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              suggestion,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_forward,
+                            size: 16,
+                            color: Colors.grey,
+                          ),
+                        ],
+                      ),
                     ),
-                    onTap: () => _selectSuggestion(suggestion),
-                    hoverColor: Theme.of(context).colorScheme.primaryContainer,
                   );
                 },
               ),
             ),
           ),
-        ),
-      ),
-    );
-
-    Overlay.of(context).insert(_overlayEntry!);
-  }
-
-  void _selectSuggestion(String suggestion) {
-    final text = widget.controller.text;
-    final words = text.split(RegExp(r'\s+'));
-    
-    if (words.isNotEmpty) {
-      words[words.length - 1] = suggestion;
-      widget.controller.text = words.join(' ');
-      widget.controller.selection = TextSelection.fromPosition(
-        TextPosition(offset: widget.controller.text.length),
-      );
-    }
-    
-    _hideSuggestions();
-  }
-
-  void _hideSuggestions() {
-    setState(() {
-      _showSuggestions = false;
-      _suggestions.clear();
-    });
-    _hideOverlay();
-  }
-
-  void _hideOverlay() {
-    _removeOverlay();
-  }
-
-  void _removeOverlay() {
-    _overlayEntry?.remove();
-    _overlayEntry = null;
-  }
-
-  double _getTextFieldWidth() {
-    final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
-    return renderBox?.size.width ?? 300;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return CompositedTransformTarget(
-      link: _layerLink,
-      child: TextField(
-        controller: widget.controller,
-        decoration: InputDecoration(
-          hintText: widget.hintText,
-          border: const OutlineInputBorder(),
-          prefixIcon: widget.prefixIcon,
-          suffixIcon: _showSuggestions
-              ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: _hideSuggestions,
-                )
-              : null,
-        ),
-        onSubmitted: (value) {
-          _hideSuggestions();
-          widget.onSubmitted(value);
-        },
-        onTapOutside: (_) => _hideSuggestions(),
-      ),
+      ],
     );
   }
 }

@@ -1,3 +1,3 @@
-@echo off
+w@echo off
 flutter run -d windows
 pause 

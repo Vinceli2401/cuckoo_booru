@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'models/artwork.dart';
+import 'models/search_filters.dart';
 
 class DanbooruService {
   static const String baseUrl = 'https://danbooru.donmai.us';
@@ -31,14 +32,29 @@ class DanbooruService {
     int limit = 20,
     int page = 1,
     String rating = 'all',
+    SortOrder sortOrder = SortOrder.id,
   }) async {
     final queryParams = <String, String>{
       'limit': limit.toString(),
       'page': page.toString(),
     };
 
-    if (tags != null && tags.trim().isNotEmpty) {
-      queryParams['tags'] = tags.trim();
+    // Add sorting
+    switch (sortOrder) {
+      case SortOrder.dateDesc:
+        queryParams['tags'] = '${tags?.trim().isNotEmpty == true ? '${tags!.trim()} ' : ''}order:date';
+        break;
+      case SortOrder.dateAsc:
+        queryParams['tags'] = '${tags?.trim().isNotEmpty == true ? '${tags!.trim()} ' : ''}order:date_asc';
+        break;
+      case SortOrder.scoreDesc:
+        queryParams['tags'] = '${tags?.trim().isNotEmpty == true ? '${tags!.trim()} ' : ''}order:score';
+        break;
+      case SortOrder.id:
+        if (tags != null && tags.trim().isNotEmpty) {
+          queryParams['tags'] = tags.trim();
+        }
+        break;
     }
 
     if (rating != 'all') {
@@ -171,6 +187,7 @@ class DanbooruService {
     int limit = 20,
     int page = 1,
     String rating = 'all',
+    SortOrder sortOrder = SortOrder.id,
   }) async {
     if (tags == null || tags.trim().isEmpty) {
       final results = await searchPosts(
@@ -178,6 +195,7 @@ class DanbooruService {
         limit: limit,
         page: page,
         rating: rating,
+        sortOrder: sortOrder,
       );
       return {
         'results': results,
@@ -192,6 +210,7 @@ class DanbooruService {
       limit: limit,
       page: page,
       rating: rating,
+      sortOrder: sortOrder,
     );
 
     // If we got results, return them
@@ -222,6 +241,7 @@ class DanbooruService {
         limit: limit,
         page: page,
         rating: rating,
+        sortOrder: sortOrder,
       );
       
       return {
