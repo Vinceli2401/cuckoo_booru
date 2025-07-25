@@ -29,16 +29,22 @@ jobs:
         pod install
         cd ..
     
-    - name: Build iOS app
-      run: flutter build ios --release --no-codesign
+    - name: Build iOS IPA for AltStore
+      run: |
+        flutter build ios --release --no-codesign
+        mkdir -p build/ios/ipa
+        cd build/ios/iphoneos
+        mkdir -p Payload
+        cp -r Runner.app Payload/
+        zip -r ../ipa/Runner.ipa Payload/
     
     - name: Run iOS tests
       run: flutter test
     
-    - name: Upload iOS build artifacts
+    - name: Upload IPA for AltStore
       uses: actions/upload-artifact@v4
       if: success()
       with:
-        name: ios-build
-        path: build/ios/
+        name: cuckoo-booru-altstore
+        path: build/ios/ipa/*.ipa
         retention-days: 30
