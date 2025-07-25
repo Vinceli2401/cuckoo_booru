@@ -1,0 +1,2 @@
+This is a placeholder file to test the assets directory structure.
+Replace this with your actual logo.png file.

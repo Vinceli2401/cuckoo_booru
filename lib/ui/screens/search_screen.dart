@@ -86,7 +86,21 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('CuckooBooru'),
+        title: Row(
+          children: [
+            // Using existing paint.png as logo - replace with your logo
+            Image.asset(
+              'assets/images/paint.png',
+              height: 32,
+              width: 32,
+              errorBuilder: (context, error, stackTrace) {
+                return const Icon(Icons.image, size: 32);
+              },
+            ),
+            const SizedBox(width: 8),
+            const Text('CuckooBooru'),
+          ],
+        ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(

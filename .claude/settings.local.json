@@ -14,7 +14,8 @@
       "Bash(ls:*)",
       "Bash(rm:*)",
       "Bash(./run_app.bat)",
-      "Bash(cmd /c:*)"
+      "Bash(cmd /c:*)",
+      "Bash(mkdir:*)"
     ],
     "deny": []
   }
