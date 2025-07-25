@@ -30,14 +30,15 @@ jobs:
         cd ..
     
     - name: Build iOS app
-      run: flutter build ipa --release --export-method development
+      run: flutter build ios --release --no-codesign
     
     - name: Run iOS tests
       run: flutter test
     
-    - name: Upload IPA file
+    - name: Upload iOS build artifacts
       uses: actions/upload-artifact@v4
+      if: success()
       with:
-        name: ios-ipa
-        path: build/ios/ipa/*.ipa
+        name: ios-build
+        path: build/ios/
         retention-days: 30
